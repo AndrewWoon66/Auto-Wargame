@@ -15,6 +15,14 @@ auto-wargame/
     └── public/
         └── index.html   ← Open this in browser
 ```
+---
+
+## 🛑 Prerequisites
+
+Before you start, ensure your system is ready:
+1. **Node.js**: You must have Node.js installed. Download the LTS version from [nodejs.org](https://nodejs.org/). 
+2. **Path Variable**: When installing Node.js, ensure the **"Add to PATH"** checkbox is selected during the setup.
+3. **Change .env.example path**: Before running cd backend, change the file path from .env.example to **.env**
 
 ---
 
