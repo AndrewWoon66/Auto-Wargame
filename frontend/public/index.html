@@ -604,6 +604,11 @@
 </div>
 
 <script>
+const API =
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:3001/api'
+    : 'https://auto-wargame-1.onrender.com/api';
+    
 let stages = 0, tokens = 0, running = false;
 
 const PRESETS = [
@@ -612,8 +617,6 @@ const PRESETS = [
   "If a severe monsoon season causes widespread flooding across Kelantan, Terengganu, and Pahang simultaneously for 3 weeks, what would the downstream impact be on Malaysia's domestic food supply chain, retail prices, and rural household food security?",
   "If Malaysia accelerates AI and automation adoption in manufacturing by 30% over 2 years, what would be the labour market displacement effects across skill levels and which industries see net job creation versus destruction?"
 ];
-
-const API = 'https://auto-wargame-1.onrender.com/api';
 
 // ── Health check ─────────────────────────────────────────────────────────────
 async function checkHealth() {
