@@ -1,6 +1,15 @@
 # ⚔ AUTO-WARGAME — Malaysia Policy Simulation Engine
 ### Powered by Z.AI ILMU-GLM-5.1
 
+
+### 📺 Project Presentation & Demonstration
+[![Auto-Wargame Pitching Video](https://img.youtube.com/vi/OKGuaW689PY/0.jpg)](https://youtu.be/OKGuaW689PY)
+
+*Click the image above to watch our 10-minute pitching video and product demonstration.*
+
+https://youtu.be/OKGuaW689PY
+---
+
 ---
 
 ## 📁 Project Structure
