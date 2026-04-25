@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AUTO-WARGAME // Malaysia Policy Simulation Engine</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #050a0e;
+    --surface: #0a1117;
+    --border: #1a2530;
+    --accent: #00ff9d;
+    --accent2: #ff6b35;
+    --accent3: #7b61ff;
+    --text: #c8d8e4;
+    --text-dim: #4a6072;
+    --text-bright: #e8f4ff;
+    --warn: #ffaa00;
+    --danger: #ff3860;
+    --card: #111c26;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,157,0.012) 2px, rgba(0,255,157,0.012) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── Header ── */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(5,10,14,0.96);
+    backdrop-filter: blur(10px);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-shadow: 0 0 18px rgba(0,255,157,0.45);
+  }
+
+  .logo small {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-shadow: none;
+    margin-top: -3px;
+  }
+
+  .hdr-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-dim);
+    transition: all 0.3s;
+  }
+  .status-pill.ok { border-color: rgba(0,255,157,0.35); color: var(--accent); background: rgba(0,255,157,0.05); }
+  .status-pill.err { border-color: rgba(255,56,96,0.35); color: var(--danger); background: rgba(255,56,96,0.05); }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+  .dot.pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── Layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── Sidebar — never scrolls ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sb-section {
+    border-bottom: 1px solid var(--border);
+    padding: 20px;
+  }
+
+  .sb-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sb-label::before { content:''; width:12px; height:1px; background:var(--accent); }
+
+  label {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    margin-top: 10px;
+  }
+  label:first-of-type { margin-top: 0; }
+
+  input, textarea, select {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text-bright);
+    padding: 9px 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,255,157,0.08);
+  }
+  input::placeholder, textarea::placeholder { color: var(--text-dim); }
+  textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+  select option { background: var(--card); }
+
+  .info-box {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    background: rgba(0,255,157,0.03);
+    border: 1px solid rgba(0,255,157,0.08);
+    border-radius: 3px;
+    padding: 8px 10px;
+    margin-top: 6px;
+    line-height: 1.7;
+  }
+
+  .btn {
+    padding: 10px 18px;
+    border-radius: 4px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    width: 100%;
+    margin-top: 8px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+  }
+  .btn-primary:hover:not(:disabled) { box-shadow: 0 0 18px rgba(0,255,157,0.35); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .preset-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .preset {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    text-align: left;
+    line-height: 1.5;
+    transition: all 0.2s;
+  }
+  .preset:hover { border-color: var(--accent2); color: var(--accent2); background: rgba(255,107,53,0.04); }
+
+  .stats {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 2.2;
+  }
+  .stats span { color: var(--accent); }
+
+  /* ── Workflow area ── */
+  .workflow {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .wf-header {
+    padding: 18px 26px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .wf-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+  }
+
+  .progress-wrap { flex: 1; max-width: 280px; margin-left: 20px; display: none; }
+  .progress-lbl { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--text-dim); margin-bottom: 5px; }
+  .progress-bar { height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 1px; transition: width 0.4s; box-shadow: 0 0 6px var(--accent); }
+
+  .wf-body {
+    flex: 1;
+    overflow-y: auto;       /* ONLY this scrolls */
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  /* empty */
+  .empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    text-align: center;
+    animation: fadeIn 0.5s 0.2s both;
+  }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .empty-icon { font-size: 44px; opacity: 0.25; }
+
+  /* stage cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    animation: slideUp 0.35s ease-out;
+    flex-shrink: 0; /* 修复点 1：防止区块展开时被坍缩挤压 */
+  }
+  @keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  .card-head {
+    padding: 13px 18px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .card-head:hover { background: rgba(255,255,255,0.02); }
+  .card.open .card-head { border-bottom: 1px solid var(--border); }
+
+  .chevron {
+    font-size: 10px;
+    color: var(--text-dim);
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+    margin-left: 4px;
+  }
+  .card.open .chevron { transform: rotate(180deg); }
+
+  .card-icon {
+    width: 30px; height: 30px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .card-meta { flex: 1; }
+  .card-name { font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text-bright); }
+  .card-desc { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+
+  .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .b-running { background: rgba(0,255,157,0.08); color: var(--accent); border: 1px solid rgba(0,255,157,0.25); }
+  .b-done    { background: rgba(0,255,157,0.04); color: var(--accent); border: 1px solid rgba(0,255,157,0.15); }
+  .b-pending { background: rgba(74,96,114,0.08); color: var(--text-dim); border: 1px solid var(--border); }
+  .b-fallback{ background: rgba(255,170,0,0.08); color: var(--warn); border: 1px solid rgba(255,170,0,0.25); }
+  .b-error   { background: rgba(255,56,96,0.08); color: var(--danger); border: 1px solid rgba(255,56,96,0.25); }
+
+  .thinking {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 18px;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+  }
+  .dots span {
+    display: inline-block; width: 5px; height: 5px;
+    border-radius: 50%; background: var(--accent); margin: 0 2px;
+    animation: bounce 1s infinite;
+  }
+  .dots span:nth-child(2){ animation-delay: 0.15s; }
+  .dots span:nth-child(3){ animation-delay: 0.3s; }
+  @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+  /* card body — hidden by default, shown when card has .open */
+  .card-body {
+    padding: 18px;
+    font-size: 13px;
+    line-height: 1.85;
+    color: var(--text);
+    display: none;
+    /* 修复点 2：为内容区添加独立滚动机制 */
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .card.open .card-body { display: block; }
+  .card-body.hidden { display: none !important; }
+
+  /* Markdown 生成的 HTML 元素样式美化 */
+  .card-body p, .report-body p { margin-bottom: 1em; }
+  .card-body ul, .report-body ul, .card-body ol, .report-body ol { margin-left: 20px; margin-bottom: 1em; }
+  .card-body h2, .report-body h2 { 
+      font-family: 'Bebas Neue', sans-serif; 
+      font-size: 20px; 
+      color: var(--accent); 
+      border-bottom: 1px solid var(--border); 
+      padding-bottom: 5px; 
+      margin: 1em 0 0.5em 0; 
+      letter-spacing: 1px;
+  }
+  .card-body h3, .report-body h3 {
+      font-family: 'Space Mono', monospace;
+      color: var(--text-bright);
+      margin: 1em 0 0.5em 0;
+      font-size: 14px;
+  }
+  .card-body pre, .report-body pre {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--accent); 
+      margin-bottom: 1em;
+  }
+  .card-body code, .report-body code {
+      font-family: 'Space Mono', monospace;
+      background: rgba(0, 255, 157, 0.1);
+      padding: 2px 4px;
+      border-radius: 2px;
+      font-size: 0.9em;
+  }
+  .card-body pre code, .report-body pre code { background: transparent; padding: 0; }
+
+  /* 修复点 3：美化 AI 生成的 Markdown 表格 */
+  .card-body table, .report-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 0.95em;
+  }
+  .card-body th, .card-body td, .report-body th, .report-body td {
+      border: 1px solid rgba(0, 255, 157, 0.2);
+      padding: 10px 14px;
+      text-align: left;
+  }
+  .card-body th, .report-body th {
+      background-color: rgba(0, 255, 157, 0.08);
+      color: var(--accent);
+      font-weight: 700;
+      font-family: 'Space Mono', monospace;
+      text-transform: uppercase;
+      font-size: 11px;
+  }
+  .card-body tr:nth-child(even), .report-body tr:nth-child(even) {
+      background-color: rgba(255, 255, 255, 0.02);
+  }
+
+  /* 针对模块内部滚动条定制赛博朋克风样式 */
+  .card-body::-webkit-scrollbar, .report-body::-webkit-scrollbar { width: 6px; }
+  .card-body::-webkit-scrollbar-track, .report-body::-webkit-scrollbar-track { background: rgba(0, 255, 157, 0.02); border-radius: 4px; }
+  .card-body::-webkit-scrollbar-thumb, .report-body::-webkit-scrollbar-thumb { background: rgba(0, 255, 157, 0.2); border-radius: 4px; }
+  .card-body::-webkit-scrollbar-thumb:hover, .report-body::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 157, 0.6); }
+
+  .chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+  }
+  /* chips card uses open class too */
+  #chip-card { flex-shrink: 0; }
+  #chip-card .chips { display: none; }
+  #chip-card.open .chips { display: flex; }
+  .chip {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px; padding: 3px 9px;
+    border-radius: 3px; border: 1px solid var(--border); color: var(--text-dim);
+    transition: all 0.3s;
+  }
+  .chip.active { border-color: var(--accent3); color: var(--accent3); background: rgba(123,97,255,0.07); }
+  .chip.done   { border-color: rgba(0,255,157,0.25); color: var(--accent); }
+
+  /* report */
+  .report {
+    background: linear-gradient(135deg, #0d1f18, #0a1117);
+    border: 1px solid rgba(0,255,157,0.25);
+    border-radius: 8px;
+    box-shadow: 0 0 36px rgba(0,255,157,0.04);
+    animation: slideUp 0.35s ease-out;
+    overflow: hidden;
+    flex-shrink: 0; /* 防止坍缩 */
+  }
+  .report-head {
+    background: rgba(0,255,157,0.04);
+    padding: 14px 22px;
+    border-bottom: 1px solid rgba(0,255,157,0.15);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 17px; letter-spacing: 3px; color: var(--accent);
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .report-head:hover { background: rgba(0,255,157,0.07); }
+  .report-head .chevron { margin-left: auto; font-size: 10px; color: var(--accent); transition: transform 0.25s; }
+  .report.collapsed .report-head { border-bottom: none; }
+  .report.collapsed .report-head .chevron { transform: rotate(180deg); }
+  .report-body {
+    padding: 26px;
+    line-height: 1.9;
+    color: var(--text);
+    font-size: 13px;
+    /* 加入限制高度和滚动 */
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .report.collapsed .report-body { display: none; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    AUTO-WARGAME
+    <small>MALAYSIA POLICY SIMULATION ENGINE // Z.AI GLM</small>
+  </div>
+  <div class="hdr-right">
+    <div class="status-pill" id="statusPill">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">CHECKING...</span>
+    </div>
+    <button class="btn btn-ghost" style="width:auto;margin:0;padding:6px 14px;" onclick="clearAll()">CLEAR</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+
+    <div class="sb-section">
+      <div class="sb-label">Backend Status</div>
+      <div class="info-box" id="backendInfo">Connecting to http://localhost:3001...</div>
+      <button class="btn btn-ghost" onclick="checkHealth()" style="margin-top:8px;">↻ REFRESH STATUS</button>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Scenario Presets</div>
+      <div class="preset-grid">
+        <button class="preset" onclick="loadPreset(0)">🛢️ RON95<br>Subsidy Removal</button>
+        <button class="preset" onclick="loadPreset(1)">🏦 OPR Hike<br>Property Market</button>
+        <button class="preset" onclick="loadPreset(2)">🌾 Flood Season<br>Food Supply</button>
+        <button class="preset" onclick="loadPreset(3)">🤖 AI Automation<br>Labour Impact</button>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Hypothesis Input</div>
+      <label>SCENARIO HYPOTHESIS</label>
+      <textarea id="hypothesis" rows="4" placeholder="e.g. If Malaysia eliminates RON95 subsidies next month, what chain reaction triggers in logistics?"></textarea>
+      <label>SIMULATION DEPTH</label>
+      <select id="depth">
+        <option value="3">Standard — 3 reasoning layers</option>
+        <option value="5" selected>Deep — 5 reasoning layers</option>
+        <option value="7">Comprehensive — 7 layers + game theory</option>
+      </select>
+      <button class="btn btn-primary" id="runBtn" onclick="runSimulation()" disabled>
+        ⚡ LAUNCH SIMULATION
+      </button>
+    </div>
+
+    <div class="sb-section" style="flex:1;">
+      <div class="sb-label">Session Stats</div>
+      <div class="stats">
+        STAGES DONE: <span id="stageCount">0</span><br>
+        TOKENS USED: <span id="tokenCount">—</span><br>
+        BACKEND: <span id="backendStat">localhost:3001</span><br>
+        MODEL: <span style="color:var(--accent3)">ILMU-GLM-5.1</span>
+      </div>
+    </div>
+
+  </aside>
+
+  <div class="workflow">
+    <div class="wf-header">
+      <span class="wf-title">SIMULATION WORKFLOW</span>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-lbl" id="progressLbl">Initialising...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="wf-body" id="wfBody">
+      <div class="empty" id="emptyState">
+        <div class="empty-icon">⚔</div>
+        <div>WARGAME ENGINE STANDBY</div>
+        <div style="font-size:10px;max-width:260px;line-height:1.9;margin-top:4px;">
+          Backend must be running on port 3001.<br>
+          Enter a hypothesis and launch the simulation.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:3001/api';
+let stages = 0, tokens = 0, running = false;
+
+const PRESETS = [
+  "If Malaysia were to completely eliminate RON95 gasoline subsidies next month, what chain reaction would this trigger in the local logistics industry? Analyse price transmission, consumer behaviour shifts, and SME survival rates across Peninsular Malaysia and East Malaysia.",
+  "If Bank Negara Malaysia raises the OPR by 50 basis points in Q1 2026, what cascading effects would this have on the residential property market in Klang Valley, and how would it differentially impact first-time homebuyers versus property investors?",
+  "If a severe monsoon season causes widespread flooding across Kelantan, Terengganu, and Pahang simultaneously for 3 weeks, what would the downstream impact be on Malaysia's domestic food supply chain, retail prices, and rural household food security?",
+  "If Malaysia accelerates AI and automation adoption in manufacturing by 30% over 2 years, what would be the labour market displacement effects across skill levels and which industries see net job creation versus destruction?"
+];
+
+// ── Health check ─────────────────────────────────────────────────────────────
+async function checkHealth() {
+  const pill = document.getElementById('statusPill');
+  const dot  = document.getElementById('statusDot');
+  const txt  = document.getElementById('statusText');
+  const info = document.getElementById('backendInfo');
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    if (d.keyConfigured) {
+      pill.className = 'status-pill ok';
+      dot.className  = 'dot pulse';
+      txt.textContent = 'BACKEND + KEY OK';
+      info.textContent = `✓ Server running\n✓ ILMU_API_KEY configured\n✓ Model: ${d.model}`;
+      document.getElementById('runBtn').disabled = false;
+    } else {
+      pill.className = 'status-pill err';
+      dot.className  = 'dot';
+      txt.textContent = 'KEY MISSING';
+      info.textContent = '✓ Server running\n✗ ILMU_API_KEY not set\n→ Edit backend/.env and restart server';
+      document.getElementById('runBtn').disabled = true;
+    }
+  } catch(e) {
+    pill.className = 'status-pill err';
+    dot.className  = 'dot';
+    txt.textContent = 'BACKEND OFFLINE';
+    info.textContent = '✗ Cannot reach localhost:3001\n→ Run: cd backend && npm start';
+    document.getElementById('runBtn').disabled = true;
+  }
+}
+
+// ── GLM call via backend ──────────────────────────────────────────────────────
+async function callGLM(messages, maxTokens = 1200) {
+  const r = await fetch(`${API}/glm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, maxTokens })
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || 'GLM call failed');
+  tokens += (d.usage?.input_tokens || 0) + (d.usage?.output_tokens || 0);
+  document.getElementById('tokenCount').textContent = tokens.toLocaleString();
+  return d.text;
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function addCard(id, name, desc, icon, bg) {
+  document.getElementById('emptyState')?.remove();
+  const b = document.getElementById('wfBody');
+  const c = document.createElement('div');
+  c.className = 'card open'; // open while running so thinking dots show
+  c.id = 'card-' + id;
+  c.innerHTML = `
+    <div class="card-head" onclick="toggleCard('${id}')">
+      <div class="card-icon" style="background:${bg}">${icon}</div>
+      <div class="card-meta">
+        <div class="card-name">${name}</div>
+        <div class="card-desc">${desc}</div>
+      </div>
+      <span class="badge b-running" id="badge-${id}">RUNNING</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="thinking" id="think-${id}">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <span>GLM reasoning...</span>
+    </div>
+    <div class="card-body" id="body-${id}"></div>`;
+  b.appendChild(c);
+  c.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function setResult(id, text, status) {
+  document.getElementById('think-' + id).style.display = 'none';
+  const body = document.getElementById('body-' + id);
+  
+  // 核心变更点：通过 marked.js 解析 AI 输出的 Markdown (确保表格能正确渲染)
+  if (typeof marked !== 'undefined') {
+      body.innerHTML = marked.parse(text);
+  } else {
+      body.textContent = text;
+  }
+  
+  const badge = document.getElementById('badge-' + id);
+  badge.textContent = { done:'DONE', fallback:'FALLBACK', error:'ERROR' }[status] || status;
+  badge.className = 'badge b-' + status;
+  // Collapse after done — user clicks to expand
+  document.getElementById('card-' + id)?.classList.remove('open');
+  stages++;
+  document.getElementById('stageCount').textContent = stages;
+}
+
+function toggleCard(id) {
+  const card = document.getElementById('card-' + id);
+  const body = document.getElementById('body-' + id);
+  if (!card || !body || !body.innerHTML.trim()) return; // don't toggle empty cards
+  card.classList.toggle('open');
+}
+
+function setProgress(pct, lbl) {
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLbl').textContent = lbl;
+}
+
+function addChips(chips) {
+  const b = document.getElementById('wfBody');
+  const w = document.createElement('div');
+  w.className = 'card open'; w.id = 'chip-card';
+  w.innerHTML = `
+    <div class="card-head" onclick="toggleCard('chip-card-inner')" style="cursor:pointer">
+      <div class="card-icon" style="background:rgba(123,97,255,0.1)">🎯</div>
+      <div class="card-meta">
+        <div class="card-name">ORCHESTRATION SUBTASKS</div>
+        <div class="card-desc">Auto-generated by GLM command centre</div>
+      </div>
+      <span class="badge b-running">LIVE</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="chips" id="chips">${chips.map((c,i)=>`<span class="chip" id="chip-${i}">${c}</span>`).join('')}</div>`;
+  // make chip-card togglable
+  w.querySelector('.card-head').onclick = () => w.classList.toggle('open');
+  // override chips to show via open class
+  w.querySelector('.chips').style.display = '';
+  b.appendChild(w);
+}
+
+function chipActive(i) { document.getElementById('chip-'+i)?.setAttribute('class','chip active'); }
+function chipDone(i)   { document.getElementById('chip-'+i)?.setAttribute('class','chip done'); }
+
+function addReport(text) {
+  const b = document.getElementById('wfBody');
+  const r = document.createElement('div');
+  r.className = 'report';
+  
+  // 报告区域同样使用 marked 渲染
+  const parsedHTML = typeof marked !== 'undefined' ? marked.parse(text) : text;
+  
+  r.innerHTML = `
+    <div class="report-head" onclick="this.closest('.report').classList.toggle('collapsed')">
+      📋 MULTIDIMENSIONAL IMPACT ASSESSMENT REPORT
+      <span class="chevron">▼</span>
+    </div>
+    <div class="report-body">${parsedHTML}</div>`;
+  b.appendChild(r);
+  r.scrollIntoView({ behavior: 'smooth' });
+}
+
+function loadPreset(i) { document.getElementById('hypothesis').value = PRESETS[i]; }
+
+function clearAll() {
+  document.getElementById('wfBody').innerHTML = '<div class="empty" id="emptyState"><div class="empty-icon">⚔</div><div>WARGAME ENGINE STANDBY</div></div>';
+  stages = 0; tokens = 0; running = false;
+  document.getElementById('stageCount').textContent = '0';
+  document.getElementById('tokenCount').textContent = '—';
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('runBtn').textContent = '⚡ LAUNCH SIMULATION';
+  document.getElementById('runBtn').disabled = false;
+}
+
+// ── Simulation Orchestrator ───────────────────────────────────────────────────
+async function runSimulation() {
+  if (running) return;
+  const hypothesis = document.getElementById('hypothesis').value.trim();
+  const depth      = parseInt(document.getElementById('depth').value);
+  if (!hypothesis) return alert('Enter a hypothesis first.');
+
+  running = true;
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').textContent = '⟳ SIMULATING...';
+  document.getElementById('emptyState')?.remove();
+  setProgress(5, 'Initialising GLM command centre...');
+
+  try {
+    // ── Stage 1: Decompose ──
+    addCard('decompose', 'HYPOTHESIS DECOMPOSITION', 'Structuring the vague input into subtasks', '🧠', 'rgba(0,255,157,0.08)');
+    setProgress(10, 'Stage 1: Decomposing hypothesis...');
+
+    const raw = await callGLM([{ role:'user', content:
+      `You are the GLM command centre for the Auto-Wargame Malaysia Policy Simulation Engine.
+Hypothesis: "${hypothesis}"
+Decompose into exactly 6 investigable subtasks. Respond ONLY with a valid JSON array:
+[{"id":"t1","task":"...","domain":"...","dataSource":"..."},...]
+Each task under 15 words. Malaysia-specific context only.` }], 700);
+
+    let subtasks = [];
+    try { 
+      const m = raw.match(/\[[\s\S]*\]/); 
+      
+      // 如果完全没有匹配到数组结构，主动抛出错误去触发 catch
+      if (!m) throw new Error("No JSON array matched from AI response"); 
+      
+      subtasks = JSON.parse(m[0]); 
+      
+      // 如果 AI 返回了空的数组 []，也算作失败，主动触发 catch
+      if (!Array.isArray(subtasks) || subtasks.length === 0) {
+        throw new Error("AI returned an empty array");
+      }
+      
+    } catch (e) { 
+      console.warn("Decomposition failed, using fallback:", e.message);
+      // Fallback: 如果 AI 没按照格式回答，就使用预设的通用分析框架，确保流程不断
+      subtasks = [
+        'Direct economic impact',
+        'Industry cascade effects',
+        'Historical precedents',
+        'Stakeholder responses',
+        'Regional variations',
+        'Policy options'
+      ].map((t,i)=>({id:`t${i+1}`,task:t,domain:'Analysis',dataSource:'DOSM/BNM'})); 
+    }
+
+    // 将解析后的 JSON 对象转换回格式化的字符串，用于 UI 显示
+    const jsonMarkdown = '```json\n' + JSON.stringify(subtasks, null, 2) + '\n```';
+    setResult('decompose', jsonMarkdown, 'done');
+    
+    setProgress(18, 'Subtasks ready — spinning up orchestration...');
+    addChips(subtasks.map((t,i)=>`T${i+1}: ${(t.task||t).slice(0,28)}${(t.task||t).length>28?'…':''}`));
+
+    // ── Stage 2: Economic Intelligence ──
+    addCard('econ', 'ECONOMIC INTELLIGENCE', 'Retrieving baseline economic indicators & gap analysis', '📡', 'rgba(123,97,255,0.08)');
+    setProgress(26, 'Stage 2: Economic intelligence...');
+    chipActive(0); chipActive(1);
+
+    let econText;
+    try {
+      econText = await callGLM([{ role:'user', content:
+        `Economic intelligence module — Malaysia Policy Wargame.
+Hypothesis: ${hypothesis}
+Subtasks: ${subtasks.slice(0,3).map(t=>t.task||t).join('; ')}
+Provide:
+1. Key baseline economic indicators (BNM, DOSM, MOF) relevant to this scenario
+2. Data gaps — if future data unavailable, identify historical proxies (2008/2014/2020-2022 events)
+3. Edge case: if critical data missing, state fallback methodology
+Be specific to Malaysian economic context.` }], 1200);
+      setResult('econ', econText, 'done');
+    } catch(e) {
+      econText = 'Economic API unavailable. Fallback: Using 2014 subsidy removal precedent data as historical proxy.';
+      setResult('econ', econText, 'fallback');
+    }
+    chipDone(0); chipDone(1);
+    setProgress(38, 'Stage 3: Industry cascade modelling...');
+
+    // ── Stage 3: Industry Cascade ──
+    addCard('cascade', 'INDUSTRY CASCADE MODEL', `Multi-layer cascade analysis (${depth} layers)`, '🔍', 'rgba(255,107,53,0.08)');
+    chipActive(2); chipActive(3);
+
+    const layers = Array.from({length:depth},(_,i)=>`Layer ${i+1}: ${['Direct industry hit','Supply chain ripple','Consumer behaviour','Labour adjustment','Investment sentiment','Political economy','Long-term equilibrium'][i]||'Extended analysis'}`).join('\n');
+
+    const cascadeText = await callGLM([{ role:'user', content:
+      `Industry Cascade Modelling module — Malaysia Policy Wargame.
+Hypothesis: ${hypothesis}
+Economic context: ${econText.slice(0,500)}
+Model cascade effects across ${depth} layers:
+${layers}
+For each layer: winners, losers, magnitude (Low/Medium/High), timeline (Immediate/3-month/12-month).
+Focus on Malaysia: logistics SMEs, dual economy formal/informal, East vs West Malaysia dynamics.` }], 1400);
+
+    setResult('cascade', cascadeText, 'done');
+    chipDone(2); chipDone(3);
+    setProgress(52, 'Stage 4: Game theory simulation...');
+
+    // ── Stage 4: Game Theory ──
+    addCard('game', 'MULTI-AGENT GAME THEORY', 'Simulating rational actor responses across stakeholders', '⚡', 'rgba(255,170,0,0.07)');
+    chipActive(4); chipActive(5);
+
+    const gameText = await callGLM([{ role:'user', content:
+      `Multi-Agent Simulation module — Malaysia Policy Wargame.
+Hypothesis: ${hypothesis}
+Run game theory simulation for these Malaysian actors:
+1. 🏛️ Federal Government — fiscal & political objectives
+2. 🏢 Large Corporates — profit maximisation
+3. 🛵 Logistics SMEs & Transporters — survival under cost pressure
+4. 👨‍👩‍👧 Urban Middle-Class Consumers — substitution behaviour
+5. 🌾 Rural & B40 Households — vulnerability, limited options
+6. 🏦 Bank Negara Malaysia — macro-stability mandate
+7. 🗣️ Opposition Coalition — political capitalisation
+For each: dominant strategy, coalition formation, Nash equilibrium outcome, tipping points.
+Malaysia-specific: Bumiputera equity, urban-rural divide, Sabah/Sarawak dynamics.` }], 1400);
+
+    setResult('game', gameText, 'done');
+    chipDone(4); chipDone(5);
+    setProgress(68, 'Stage 5: Edge case analysis...');
+
+    // ── Stage 5: Edge Cases ──
+    addCard('edge', 'EDGE CASE & FAILURE ANALYSIS', 'Ambiguity, data gaps, worst-case mapping', '🔄', 'rgba(0,200,255,0.07)');
+
+    const edgeText = await callGLM([{ role:'user', content:
+      `Edge Case & Resilience module — Malaysia Policy Wargame.
+Hypothesis: ${hypothesis}
+Identify:
+1. AMBIGUITY ZONES — critical assumptions that could be wrong
+2. DATA FAILURE PROTOCOL — unavailable data and fallback methodology
+3. BLACK SWAN SCENARIOS — low-probability, high-impact disruptions
+4. SYSTEM RESILIENCE — minimum viable output if sub-model fails
+5. CONFIDENCE CALIBRATION — rate each major finding High/Medium/Low` }], 1200);
+
+    setResult('edge', edgeText, 'done');
+    setProgress(84, 'Synthesising final report...');
+
+    // ── Stage 6: Final Report ──
+    addCard('report', 'FINAL SYNTHESIS', 'Assembling multidimensional impact assessment', '📊', 'rgba(0,255,157,0.06)');
+
+    const reportText = await callGLM([{ role:'user', content:
+      `Final Synthesis module — Malaysia Policy Wargame. Produce the executive report.
+HYPOTHESIS: ${hypothesis}
+
+Completed analyses: Economic Intelligence, ${depth}-layer Industry Cascade, Multi-agent Game Theory, Edge Case Analysis.
+
+Write the MULTIDIMENSIONAL BUSINESS IMPACT ASSESSMENT REPORT with sections:
+
+## EXECUTIVE SUMMARY
+(3-4 sentences: what happens, who is most affected, recommended response)
+
+## KEY FINDINGS
+(5-7 numbered findings, specific and quantified where possible)
+
+## IMPACT MATRIX
+(Short/Medium/Long term × Direct/Indirect/Structural — 9 cells described in prose)
+
+## REGIONAL DIFFERENTIATION
+(Klang Valley vs East Coast vs Sabah/Sarawak vs Johor — specific differences)
+
+## POLICY RESPONSE OPTIONS
+(3 distinct levers with trade-offs each)
+
+## SIMULATION CONFIDENCE
+(Overall: HIGH/MEDIUM/LOW with justification)
+
+Ground everything in Malaysian economic and political reality.` }], 2000);
+
+    setResult('report', '✓ Report generated below', 'done');
+    setProgress(100, 'Simulation complete.');
+    addReport(reportText);
+
+  } catch(err) {
+    const b = document.getElementById('wfBody');
+    const e = document.createElement('div');
+    e.className = 'card';
+    e.style.borderColor = 'rgba(255,56,96,0.3)';
+    e.innerHTML = `<div class="card-head" style="cursor:default"><div class="card-icon" style="background:rgba(255,56,96,0.1)">⚠</div><div class="card-meta"><div class="card-name" style="color:var(--danger)">SIMULATION FAILED</div><div class="card-desc">${err.message}</div></div><span class="badge b-error">ERROR</span></div>`;
+    b.appendChild(e);
+    setProgress(0, 'Error — check backend terminal for details.');
+  }
+
+  running = false;
+  document.getElementById('runBtn').disabled = false;
+  document.getElementById('runBtn').textContent = '⚡ LAUNCH SIMULATION';
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+checkHealth();
+setInterval(checkHealth, 10000);
+</script>
+</body>
+</html>
